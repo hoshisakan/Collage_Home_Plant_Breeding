@@ -1,0 +1,61 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          sensor
+# Required-Start:    $syslog $network
+# Required-Stop:     $syslog $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts the sensor
+# Description:       starts sensor using start-stop-daemon
+### END INIT INFO
+
+sensor_service_start() {
+    echo -n "Starting python: "
+    echo "---------------------------------------------------------------------------------" >>/var/log/sensor
+    date +"! %Y/%m/%d %a %T : Starting python ." >>/var/log/sensor
+    echo start
+    source /home/pi/.venvs/dev-env/bin/activate
+    cd /home/pi/pycode
+    python3 -u mqtt_for_sensor.py > /home/pi/pycode/output02.log 2>&1 &
+    echo "Done."
+    echo ""
+    date +"! %Y/%m/%d %a %T : Finished." >>/var/log/sensor
+    echo "---------------------------------------------------------------------------------" >>/var/log/sensor
+    touch /var/lock/subsys/python
+}
+
+sensor_service_stop() {
+    echo -n "Shutting Down python Listeners: "
+    echo "---------------------------------------------------------------------------------" >>/var/log/sensor
+    date +"! %Y/%m/%d %a %T : Shutting Down python." >>/var/log/sensor
+    echo "python"
+    killall -9 python3
+    echo "Done."
+    rm -f /var/lock/subsys/python
+    echo "Done."
+    date +"! %Y/%m/%d %a %T : Finished." >>/var/log/sensor
+    echo "---------------------------------------------------------------------------------" >>/var/log/sensor
+}
+
+sensor_service_restart() {
+    sensor_service_stop
+    sensor_service_start
+}
+
+case "$1" in
+    start)
+        sensor_service_start
+        ;;
+    stop)
+        sensor_service_stop
+        ;;
+    restart)
+        sensor_service_restart
+        ;;
+    *)
+        echo "Usage: sensor { start | stop | restart }"
+        exit 1
+        ;;
+esac
+exit 0
