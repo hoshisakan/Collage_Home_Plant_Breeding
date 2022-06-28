@@ -1,0 +1,123 @@
+version: '3.7'
+services:
+    vue:
+        build: ./conf/vue.js
+        image: hoshisakan/vue.js
+        container_name: web_vue.js:collage
+        volumes:
+            - ./server/project/frontend:/app
+        ports:
+            - 8082:8080
+            - 8081:8086
+        tty: true
+        privileged: true
+        restart: always
+
+    flask:
+        build:
+            context: ./conf/flask-uwsgi
+            dockerfile: Dockerfile
+            args:
+                - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+        image: hoshisakan/flask:collage
+        container_name: web_flask
+        # command: ['bash', './run_web.sh']
+        command: ['uwsgi', 'emperor.ini']
+        volumes:
+            - temporary:/server/temporary
+            - ./server:/server
+            - ./server/project:/server/project
+            - ./server/run_web.sh:/server/run_web.sh
+            - ./server/vassal:/server/vassal
+            - ./logs/uwsgi/temp:/var/log/uwsgi
+        networks:
+            - common
+        ports:
+            - 5000:5000
+            - 5001:5001
+        depends_on:
+            - mysql
+            - mosquitto
+        tty: true
+        restart: always
+
+    nginx:
+        build: ./conf/nginx
+        image: hoshisakan/nginx:collage
+        container_name: web_nginx
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - temporary:/server/temporary
+            - ./conf/nginx/nginx.conf:/etc/nginx/nginx.conf
+            - ./conf/nginx/conf.d:/etc/nginx/conf.d/
+            - ./conf/nginx/dhparam:/etc/nginx/dhparam
+            - ./server/project/frontend/dist:/usr/share/nginx/html
+            - ./server/project/frontend/certs/ssl:/etc/nginx/ssl
+            - ./server/project/frontend/certs/data/.well-known/pki-validation/:/usr/share/nginx/html/letsencrypt
+            - ./logs/nginx/message:/var/log/nginx
+        tty: true
+        depends_on:
+            - flask
+            - mysql
+        networks:
+            - common
+        restart: always
+
+    mysql:
+        build: ./conf/mysql
+        container_name: web_mysql
+        ports:
+            - 3306:3306
+        volumes:
+            - ./data/db/mysql/:/var/lib/mysql/
+            - ./conf/mysql/my.cnf:/etc/mysql/my.cnf
+        environment:
+            - MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-root}
+            - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-967832134}
+            - MYSQL_USER=${MYSQL_USER:-hoshisakan}
+            - MYSQL_PASSWORD=${MYSQL_PASSWORD:-967832}
+            - MYSQL_DATABASE=${MYSQL_DATABASE:-Default}
+        restart: always
+
+    phpMyAdmin:
+        build: ./conf/phpMyAdmin
+        image: hoshisakan/phpMyAdmin:collage
+        container_name: web_phpMyAdmin
+        ports:
+            - 8080:80
+        environment:
+            - PMA_HOST=${MYSQL_HOST:-mysql}
+        depends_on:
+            - mysql
+        restart: always
+
+    mosquitto:
+        build: ./conf/mosquitto
+        container_name: web_mosquitto
+        image: hoshisakan/mosquitto:collage
+        ports:
+            - 1883:1883
+            - 8883:8883
+            - 9001:9001
+            - 9002:9002
+        environment:
+            - MOSQUITTO_USERNAME=${MOSQUITTO_USERNAME}
+            - MOSQUITTO_PASSWORD=${MOSQUITTO_PASSWORD}
+            - MOSQUITTO_LOGFILENAME=${MOSQUITTO_LOGFILENAME}
+        volumes:
+            - ./conf/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+            - ./logs/mosquitto/:/mosquitto/log
+            - ./conf/mosquitto/docker-entrypoint.sh:/docker-entrypoint.sh
+            - ./server/project/frontend/certs/ssl/:/var/lib/mosquitto
+        networks:
+            - common
+        restart: always
+
+volumes:
+    temporary:
+
+networks:
+    common:
+        external: true

@@ -1,0 +1,47 @@
+Flask
+Flask-MQTT==1.0.5
+Flask-Login==0.4.1
+Flask-Mail==0.9.1
+WTForms
+Flask-WTF
+# Flask-Moment==0.4.0
+# Flask-PageDown==0.1.5
+# Flask-SQLAlchemy==2.0
+Flask-rest-api==0.16.0
+# psycopg2
+# psycopg2-binary
+pylint
+np==1.0.2
+numpy==1.16.4
+PyMySQL==0.9.3
+uWSGI
+Flask-uWSGI-WebSocket==0.6.1
+Jinja2==2.10.1
+Flask-Bootstrap==3.3.7.1
+Flask-SQLAlchemy
+Flask-Assets
+Flask-Static-Compress
+Flask-CORS
+flask-session
+jsmin
+cssmin
+lesscpy
+lessc
+# RPi.GPIO
+sshtunnel
+Flask-MySQLdb
+paho-mqtt
+celery
+flask_bcrypt
+Flask-SocketIO
+requests
+Flask-Script
+APScheduler
+gevent
+Flask-Sockets
+gevent-websocket
+pyopenssl
+flask_cors
+flask-jwt-extended
+markupsafe==2.0.1
+aws-sam-cli ==1.37.0

@@ -1,0 +1,15 @@
+logs
+.env
+__pycache__
+website/docker_shell
+website/data
+website/backup/Plant
+website/server/project/backend/test
+website/server/project/backend/app/instance
+website/server/project/backend/app/static
+website/server/project/frontend/old
+website/server/project/frontend/certs
+website/server/project/frontend/backup
+website/conf/nginx/conf.d
+image_recognition/module/config.py
+sensor/module/config.py
