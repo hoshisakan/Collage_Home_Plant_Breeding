@@ -1,5 +1,5 @@
 <template>
-    <div class="md-layout md-alignment-center-center">
+    <div class="md-layout">
         <div class="md-layout-item"></div>
         <div class="md-layout-item md-medium-size-50 md-small-size-50 md-xsmall-size-100">
             <form novalidate class="md-layout" @submit.prevent="submitForm">
@@ -33,11 +33,11 @@
                             ></md-input>
                             <span class="md-error">{{ fielderrorMessage.password }}</span>
                         </md-field>
-                        <div id="linkBody">
+                        <!-- <div id="linkBody">
                             <div class="forgetPassword">
                                 <a href="/validate/apply/reset/password" class="simple-text logo-mini">忘記密碼?</a>
                             </div>
-                        </div>
+                        </div> -->
                     </template>
                     <template slot="user-footer">
                         <!-- <md-button type="button" class="md-primary" @click="jumpRegisterPage">
@@ -224,6 +224,14 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.md-layout {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-wrap: wrap;
+}
+
 .forgetPassword {
     text-align: right;
 }

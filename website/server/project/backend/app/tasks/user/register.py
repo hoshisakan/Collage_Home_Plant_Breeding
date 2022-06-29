@@ -37,7 +37,6 @@ def HandleError(exp_object=None):
 
 exc_time = lambda:datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
 
-#TODO 若產品辨識碼正確，且使用者帳密與電郵沒有重複，則更新使用者的資料
 def updateUserData(**kwargs):
     # global update_data_count
     try:
@@ -46,18 +45,35 @@ def updateUserData(**kwargs):
         result = {}
         with DB() as cursor:
             print(kwargs.items())
-            sql_command = "SELECT * FROM User_data WHERE user_name = '%s' OR user_email = '%s';" % (kwargs['username'],kwargs['email'])
+            sql_command = "SELECT * FROM User_data WHERE user_name = '%s';" % (kwargs['username'])
             query_res = cursor.execute(sql_command)
-            row_count = cursor.rowcount
+            username_row_count = cursor.rowcount
             
-            result['row_count'] = row_count
-            if row_count > 0:
+            sql_command = "SELECT * FROM User_data WHERE user_email = '%s';" % (kwargs['email'])
+            query_res = cursor.execute(sql_command)
+            email_row_count = cursor.rowcount
+            
+            result['username_row_count'] = username_row_count
+            result['email_row_count'] = email_row_count
+
+            if username_row_count > 0 or email_row_count > 0:
                 result['register_status'] = False
+                if username_row_count > 0 and email_row_count > 0:
+                    result['form_username'] = False
+                    result['form_email'] = False
+                elif username_row_count > 0:
+                    result['form_username'] = False
+                    result['form_email'] = True
+                else:
+                    result['form_email'] = False
+                    result['form_username'] = True
             else:
                 sql_command = "INSERT INTO User_data (user_name, user_email, user_password) VALUES ('%s','%s','%s')" % (kwargs['username'],kwargs['email'],kwargs['password'])
                 query_res = cursor.execute(sql_command)
                 result['register_status'] = True
                 result['add_query_res'] = query_res
+                result['form_username'] = True
+                result['form_email'] = True
         return result
     except Exception as e:
         HandleError(e)

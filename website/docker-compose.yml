@@ -1,9 +1,13 @@
-version: '3.7'
+version: '3.9'
 services:
     vue:
-        build: ./conf/vue.js
-        image: hoshisakan/vue.js
-        container_name: web_vue.js:collage
+        build:
+            context: ./conf/vue.js
+            dockerfile: Dockerfile
+            args:
+                - NODE_ENV=${NODE_ENV}
+        image: hoshisakan/vue.js:collage_v2
+        container_name: web_vue.js
         volumes:
             - ./server/project/frontend:/app
         ports:
@@ -19,10 +23,9 @@ services:
             dockerfile: Dockerfile
             args:
                 - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
-        image: hoshisakan/flask:collage
+        image: hoshisakan/flask:collage_v2
         container_name: web_flask
-        # command: ['bash', './run_web.sh']
-        command: ['uwsgi', 'emperor.ini']
+        command: ['bash', './run_web.sh']
         volumes:
             - temporary:/server/temporary
             - ./server:/server
@@ -67,6 +70,7 @@ services:
 
     mysql:
         build: ./conf/mysql
+        image: hoshisakan/mysql:collage
         container_name: web_mysql
         ports:
             - 3306:3306
@@ -83,7 +87,7 @@ services:
 
     phpMyAdmin:
         build: ./conf/phpMyAdmin
-        image: hoshisakan/phpMyAdmin:collage
+        image: hoshisakan/phpmyadmin:collage
         container_name: web_phpMyAdmin
         ports:
             - 8080:80

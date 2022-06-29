@@ -68,7 +68,7 @@ export default {
         }
     },
     mounted() {
-        this.InitOnce()
+        // this.InitOnce()
     },
     methods: {
         // 初始化OneSignal的通知
