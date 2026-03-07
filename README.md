@@ -61,6 +61,7 @@ Raspberry Pi 端 (sensor、image_recognition) 在裝置上以 **原生 Python + 
 | **[HARDWARE_CODE_REFERENCE.md](./HARDWARE_CODE_REFERENCE.md)** | **GPIO / SPI / 硬體初始化** | 專案內**所有** GPIO、馬達驅動、感測器讀取（SPI MCP3008、DHT11）的程式碼區塊彙整，附硬體初始化與異常判定註解 |
 | **[FAILSAFE_AND_LOGIC.md](./FAILSAFE_AND_LOGIC.md)** | **Failsafe**、**單一錯誤不崩潰** | 感測器異常時如何決定關閉馬達／燈具（邊緣 HandleAbnormal、後端門檻與 operation/command）；try/except 與不 re-raise 的設計，確保單一錯誤不導致系統崩潰 |
 | **[FLASK_AND_THREADING.md](./FLASK_AND_THREADING.md)** | **Flask API**、**多執行緒** | REST 與 MQTT 應用分離、與硬體／影像相關的 API 路由；影像辨識結果傳遞路徑（影像 Pi → 後端存檔／DB／警報；硬體控制由感測器資料 → operation/command）；雙執行緒分離影像運算與即時硬體監控 |
+| **[CODE_FUNCTION_MAPPING.md](./CODE_FUNCTION_MAPPING.md)** | **程式與功能對照** | 模組化功能對照表（主要 Python 檔與 GPIO／Relay／Sensors 對應）；初始化流程、感測器 0／Null 時立即關閉繼電器之程式段落、Threading 併發、Long-run 穩定性要點與行號索引 |
 
 ### 技術要點條列
 
@@ -77,6 +78,7 @@ Raspberry Pi 端 (sensor、image_recognition) 在裝置上以 **原生 Python + 
 | **Flask API 與多執行緒** ([FLASK_AND_THREADING.md](./FLASK_AND_THREADING.md)) | 主站 API（create_app）與 MQTT 應用（create_mqtt_app）分離；硬體／手動拍照經 **MqttClient** 發佈至 MQTT，由 Pi 端訂閱執行。影像辨識結果（原圖、辨識圖、健康度）→ 後端存檔／DB／警報；硬體控制由 **env/plant/detection/data** → 門檻 → **operation/command** → 感測器 Pi。影像 Pi 與感測器 Pi 各以**雙執行緒**分離「訂閱」與「發佈＋運算／採樣」，影像運算不阻塞硬體監控。 |
 | **硬體程式碼彙整** ([HARDWARE_CODE_REFERENCE.md](./HARDWARE_CODE_REFERENCE.md)) | 所有 GPIO、馬達、感測器讀取（SPI MCP3008、DHT11）皆在 **sensor/mqtt_for_sensor.py**；初始化為 BCM、OUT、initial=HIGH；異常時 **HandleAbnormal** 依 key 關燈／關馬達並寫 log；**ForceStop** 離開前將兩腳設 HIGH。 |
 | **Failsafe 與邏輯** ([FAILSAFE_AND_LOGIC.md](./FAILSAFE_AND_LOGIC.md)) | **邊緣**：讀取 None／0 → HandleAbnormal 關燈或關馬達、不推送。**後端**：門檻判斷（溫溼度、亮度、土壤、水位）產生 operation/command 與 OneSignal 警報，僅自動模式時發送 operation/command。**單一錯誤不崩潰**：on_message、DataPublisher、CollectSensorData 等外層 try/except，CatchError 只記錄不 re-raise。 |
+| **程式與功能對照** ([CODE_FUNCTION_MAPPING.md](./CODE_FUNCTION_MAPPING.md)) | 三模組之**主要 Python 檔 ↔ GPIO／Relay／Sensors** 對照表；**初始化流程**（sensor 模組載入時 BCM、SPI、繼電器 initial=HIGH）；**感測器 0／Null → 立即關閉繼電器**之 HandleAbnormal 程式位置（約 219–234 行）；**Threading** 分離影像分析與硬體 I/O；**Long-run 穩定性**（安全預設、無效資料不推送、單一錯誤不崩潰、結束時 ForceStop）與行號索引。 |
 
 詳細程式碼位置與流程請直接參閱上述各份文件。
 
@@ -131,6 +133,7 @@ Raspberry Pi 端 (sensor、image_recognition) 在裝置上以 **原生 Python + 
 | **[HARDWARE_CODE_REFERENCE.md](./HARDWARE_CODE_REFERENCE.md)** | GPIO／馬達／感測器讀取程式碼彙整與硬體初始化、異常判定註解 |
 | **[FAILSAFE_AND_LOGIC.md](./FAILSAFE_AND_LOGIC.md)** | 感測器異常時的 Failsafe 邏輯（關閉馬達／燈具）、單一錯誤不崩潰設計 |
 | **[FLASK_AND_THREADING.md](./FLASK_AND_THREADING.md)** | Flask API 與多執行緒、影像辨識結果傳遞、影像運算與硬體監控分離 |
+| **[CODE_FUNCTION_MAPPING.md](./CODE_FUNCTION_MAPPING.md)** | 軟硬體控制邏輯對照（模組化功能表、初始化、異常關閉繼電器、併發、Long-run 穩定性與行號索引） |
 | **[MODULE_OVERVIEW.md](./MODULE_OVERVIEW.md)** | website / image_recognition / sensor 功能彙整 |
 
 ---
