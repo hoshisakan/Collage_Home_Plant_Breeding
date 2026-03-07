@@ -1,393 +1,132 @@
-# Collage_Home_Plant_Breeding
-
-CentOS-Docker-Nginx-SSL-uWSGI-Vue.js-Flask-MySQL-Mosquitto-OpenCV
-
-透過 [Docker](https://www.docker.com/) 建立 [Vue.js
-](https://vuejs.org/) + [Flask](https://flask.palletsprojects.com/en/2.0.x/) + [Nginx](https://nginx.org/en/) + [uWSGI](https://uwsgi-docs.readthedocs.io/en/latest/) + [MySQL](https://www.mysql.com/) + [Mosquitto](https://mosquitto.org/) 製作居家植物養殖的網站
-
-## 簡述
-* 使用兩塊 Raspberry pi 分別連接感測器與羅技 C270 網路攝影機，蒐集植物生長環境數據與透過影像辨識技術剖析植物生長圖像計算其健康度，以及拍攝植物生長情況，並將其數據與圖像透過 MQTT topic 傳遞至 MQTT broker。
-
-* 使用 Flask 建置後端伺服器，連接 MQTT broker，接收兩塊 Raspberry pi 傳遞的植物生長環境數據，以及植物生長圖像與健康度數值。
-
-## Docker 開發環境建置
-
-### docker-compose.yml 配置
-
-```cmd
-version: "3.7"
-services:
-  vue:
-    build: ./conf/vue.js
-    container_name: web_frontend_vue.js
-    volumes:
-      - ./server/project/frontend:/server/project/frontend/
-    ports:
-      - 8082:8080
-      - 8081:8086
-    tty: true
-    privileged: true
-    restart: always
-
-  flask:
-    build: ./conf/flask-uwsgi
-    container_name: web_backend_flask
-    command: ["bash", "./run_web.sh"]
-    volumes:
-      - temporary:/server/temporary
-      - ./server:/server
-      - ./server/project:/server/project
-      - ./server/run_web.sh:/server/run_web.sh
-      - ./server/vassal:/server/vassal
-      - ./logs/uwsgi/temp:/var/log/uwsgi
-    networks:
-      - common
-    ports:
-      - 5000:5000
-      - 5001:5001
-    depends_on:
-      - mysql
-      - mosquitto
-    restart: always
-
-  nginx:
-    build: ./conf/nginx
-    container_name: web_nginx
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - temporary:/server/temporary
-      - ./server:/server
-      - ./conf/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./conf/nginx/conf.d:/etc/nginx/conf.d/
-      - ./conf/nginx/dhparam:/etc/nginx/dhparam
-      - ./server/project/frontend/certs/ssl/:/etc/nginx/ssl
-      - ./server/project/frontend/certs/data/:/usr/share/nginx/html/letsencrypt/
-      - ./logs/nginx/message:/var/log/nginx
-    tty: true
-    depends_on:
-      - flask
-      - mysql
-    networks:
-      - common
-    restart: always
-
-  mysql:
-    image: mysql:5.7
-    container_name: web_mysql
-    ports:
-      - 3306:3306
-    volumes:
-      - ./data/db/mysql/:/var/lib/mysql/
-      - ./conf/mysql/my.cnf:/etc/mysql/my.cnf
-    environment:
-      - MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-root}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-967832134}
-      - MYSQL_USER=${MYSQL_USER:-hoshisakan}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-967832}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-Default}
-    restart: always
-
-  web_phpMyAdmin:
-    image: phpmyadmin/phpmyadmin:latest
-    container_name: web_phpMyAdmin
-    ports:
-      - 8081:80
-    environment:
-      - PMA_HOST=${MYSQL_HOST:-mysql}
-    depends_on:
-      - mysql
-    restart: always
-
-  mosquitto:
-    build: ./conf/mosquitto
-    container_name: web_mosquitto
-    ports:
-      - 1883:1883
-      - 8883:8883
-      - 9001:9001
-      - 9002:9002
-    environment:
-      - MOSQUITTO_USERNAME=${MOSQUITTO_USERNAME}
-      - MOSQUITTO_PASSWORD=${MOSQUITTO_PASSWORD}
-      - MOSQUITTO_LOGFILENAME=${MOSQUITTO_LOGFILENAME}
-    volumes:
-      - ./conf/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - ./logs/mosquitto/:/mosquitto/log
-      - ./conf/mosquitto/docker-entrypoint.sh:/docker-entrypoint.sh
-      - ./conf/mosquitto/passwordfile:/mosquitto/passwordfile
-      - ./server/project/frontend/certs/ssl/:/var/lib/mosquitto
-    networks:
-      - common
-    restart: always
-
-volumes:
-  temporary:
-
-networks:
-  common:
-    external: true
-
-```
-
-### .env 檔案配置
-
-> 註: 此步驟一定要做，否則當創建 MySQL 與 phpMyAdmin，以及 mosquitto 容器，且沒有給預設值時，會造成其創建失敗
-
-```cmd
-#MYSQL
-MYSQL_ROOT_USER=your MySQL normal administrator password
-MYSQL_ROOT_PASSWORD=your MySQL administrator password
-MYSQL_USER=your MySQL normal user password
-MYSQL_PASSWORD=your MySQL normal user password
-MYSQL_DATABASE=your MySQL database name
-MYSQL_HOST=mysql
-##對應到docker-compose.yml中mysql的服務名稱
-MAX_LIMIT=2000
-##資料上限
-#MOSQUITTO
-MOSQUITTO_USERNAME=your mqtt broker username
-MOSQUITTO_PASSWORD=your mqtt broker password
-MOSQUITTO_LOGFILENAME=/mosquitto/log/05_10_mosquitto.log
-
-```
-
-### Docker 查看容器運行情況
-
-```cmd
-docker-compose ps
-```
-![alt](https://imgur.com/XybHd4C.png)
-![alt](https://imgur.com/K9V236D.png)
-
-
-## MySQL && phpMyAdmin
-
-### phpMyAdmin 查看 MySQL 資料庫的資料表
-
-![alt](https://imgur.com/gM4Zaur.png)
-![alt](https://imgur.com/mJtgMtj.png)
-
-## Eclipse Mosquitto && Raspberry Pi
-
-* 建立與 Mosquitto Server 的連線
-
-```cmd
-  def Connect(self,mode=None):
-    self.__client.username_pw_set(cf.username, cf.password)
-    self.__client.tls_set(ca_certs=None, certfile=None, keyfile=None,
-                          tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
-    self.__client.tls_insecure_set(True)
-    self.__client.connect(self.__host, self.__port, 60)
-    self.__client.on_connect = self.__on_connect
-    self.__client.on_message = self.on_message
-    self.__client.on_disconnect = self.__on_disconnect
-    if mode is not None:
-      if mode == True:
-        self.__client.loop_start()
-      else:
-        self.__client.loop_forever()
-```
-* 斷開與 Mosquitto Server 的連線
-
-```cmd
-def Disconnect(self):
-    self.__client.loop_stop()
-    self.__client.disconnect()
-```
-
-* 推送訊息透過主題
-
-```cmd
-def Publish(self, **kwargs):
-   if kwargs['pub_topic'] is not None and kwargs['pub_message'] is not None:
-       self.__client.publish(kwargs['pub_topic'],kwargs['pub_message'],kwargs['pub_qos'],kwargs['pub_retain'])
-       print("推送成功!")
-       return True
-   else:
-    print("推送失敗!")
-    return False
-```
-
-* 接收訊息透過主題
-
-```cmd
-def on_message(self, client, userdata, message):
-    try:
-      decode_message = str(message.payload.decode("utf-8", "ignore"))
-      receive_data = json.loads(decode_message)
-      receive_topic = message.topic
-      print('訂閱主題:{}\n接收數據:{}'.format(receive_topic,receive_data))
-    except Exception as e:
-      self.HandleError(e)
-```
-
-## Flask 後端 Web Server
-
-### 儲存資料至 MySQL 資料庫的資料表中
-
-* 建構一個指標，獲取對資料庫操作的權限
-
-```cmd
-class DataBase():
-    def __init__(self, *args):
-        self.connection = pymysql.connect(
-            host=MySQL.MYSQL_HOST,
-            user=MySQL.MYSQL_USER,
-            database=MySQL.MYSQL_DB,
-            password=MySQL.MYSQL_PASSWORD,
-            port=MySQL.MYSQL_PORT,
-            cursorclass=DictCursor
-        )
-        self.connection.autocommit(True)
-        self.cursor = self.connection.cursor()
-
-    def __enter__(self):
-        return self.cursor
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cursor.close()
-        self.connection.close()
-```
-
-* 執行 SQL Insert Command
-
-```cmd
-@staticmethod
-def insertion_data(save_data=None):
-    global count
-    with DB() as db:
-        sql_command = "INSERT INTO Sensor_data(d_dht11_t,d_dht11_h,d_light,d_soil,d_water_level,d_created_date) \
-            VALUES(%s,%s,%s,%s,%s,'%s')" % (save_data['temperature'], save_data['humidity'], save_data['brightness'],
-            save_data['soil'], save_data['water_level'], save_data['date'])
-        db.execute(sql_command)
-        print(DE.GetDateTime(), "成功儲存第", count + 1, "筆資料")
-        count += 1
-```
-
-* 執行 SQL Update Command
-
-```cmd
-@staticmethod
-def update_data(data_id, latest_data):
-    global update_count
-    with DB() as db:
-        sql_command = "UPDATE Sensor_data SET d_dht11_t = %s,d_dht11_h = %s,d_light = %s,d_soil = %s,d_water_level = %s,d_created_date = '%s' WHERE d_id = %s" % (
-            latest_data['temperature'], latest_data['humidity'], latest_data['brightness'],latest_data['soil'], latest_data['water_level'],latest_data['date'],data_id)
-            exc_code = db.execute(sql_command)
-            print(DE.GetDateTime(), "成功更新第", update_count + 1, "筆資料")
-        update_count += 1
-    return exc_code
-```
-
-* 檢測環境數值是否異常，異常則發送推播
-
-```cmd
-def CheckTemperature(temperature=None):
-    if temperature is not None:
-       abnormal_key = ['no_switch_temp','temperature_alert']
-       if temperature > 0 and temperature >= 16 and temperature < 30:
-          abnormal_value = [False,False]
-       elif temperature > 0 and temperature < 16 or temperature >= 30:
-          if temperature < 16:
-              abnormal_value = [False,True]
-              temp_message = '低溫警報：' + str(temperature) + ' °C'
-          else:
-              abnormal_value = [False,True]
-              temp_message = '高溫警報：' + str(temperature) + ' °C'
-          CollectAlertMessage(temp_message)
-       CombineDict(abnormal_key, abnormal_value)
-```
-
-* 接收 Raspberry pi 透過 MQTT 發送的圖片，以二進制方式寫入將其儲存至伺服器端
-
-```cmd
-@staticmethod
-def save_image(save_path=None,rec_image=None,rec_topic=None):
-    global save_image_count
-    temp_msg = ""
-    send_msg = {}
-    dict_keys = ['monitor','anatomy']
-    with open(save_path, 'wb') as handle:
-        handle.write(rec_image)
-        if os.path.isfile(save_path):
-            save_image_count += 1
-            print("第{}張圖像儲存成功!".format(str(save_image_count)))
-            temp_msg = 'Yes'
-            if rec_topic == 'response/monitor/message':
-                send_msg[dict_keys[0]] = temp_msg
-            else:
-                send_msg[dict_keys[1]] = temp_msg
-        else:
-            print("圖像儲存失敗. . .")
-            temp_msg = "No"
-            if rec_topic == 'response/monitor/message':
-                send_msg[dict_keys[0]] = temp_msg
-            else:
-                send_msg[dict_keys[1]] = temp_msg
-    return send_msg
-```
-
-## 推播服務 OneSingnal
-
-### 操作流程
-
-> OneSingnal 服務設定，需貼上網站的 URL才能夠使用此服務
-
-![alt](https://imgur.com/a1d7tHl.png)
-![alt](https://imgur.com/eG7jLQo.png)
-
-> Vue.Js 的專案底下其 index.html 也要加上其 SDK 的引用
-
-```cmd
-<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
-```
-
-> 此外，Vue.JS 還需要加上初始化 OneSignal 服務的設定
-
-```cmd
- methods: {
-    // 初始化OneSignal的通知
-    InitOnce () {
-      if (this.alert_enable !== true) {
-        var OneSignal = window.OneSignal || []
-        OneSignal.push(function () {
-          OneSignal.init({
-            appId: 'cc5f345e-09f7-4b47-8f56-1f5509e417ba',
-            autoResubscribe: true,
-            notifyButton: {
-              enable: true
-            }
-            // allowLocalhostAsSecureOrigin: true
-          })
-          OneSignal.showNativePrompt()
-          OneSignal.showSlidedownPrompt()
-        })
-      }
-      this.alert_enable = true
-    }
-  },
-```
-
-### 測試推播服務
-
-![alt](https://imgur.com/sfZGMOe.png)
-
-# 運行結果
-
-### 監控植物生長的環境狀態與其生長情況
-
-![alt](https://imgur.com/ImcU5fU.png)
-
-### 透過羅技 c270 的鏡頭捕捉植物的生長狀態
-
-![alt](https://imgur.com/3mGQR6v.png)
-
-### 網頁手機版介面
-
-![alt](https://imgur.com/Fk7eW4Z.jpg)
-
-### 硬體展示
-
-![alt](https://imgur.com/y9Ptxwc.jpg)
+# 家庭植栽監控系統 (Home Plant Breeding)
+
+> 基於 **Raspberry Pi** 的軟硬體整合監控系統，具備分層架構、GPIO 硬體控制、感測器防呆與非同步監控設計，適合作為 **系統架構**、**硬體介面** 與 **穩定性思維** 的實作範例。
+
+---
+
+## 📌 專案簡介
+
+本專案為一 **端對端 (End-to-End) 的物聯網監控系統**：在 **Raspberry Pi** 上執行感測器採集與繼電器控制、影像擷取與健康度分析，經 **MQTT (Mosquitto)** 與後端 **Flask API** 通訊，並透過 **Vue 前端** 提供儀表板與即時控制。設計上特別著重：
+
+- **系統架構**：分層與模組邊界、通訊協定與資料流向的清晰定義  
+- **硬體控制**：GPIO 初始化順序、電位切換語意、異常時的安全狀態 (Fail-Safe)  
+- **穩定性**：感測器讀取防呆、例外處理、訂閱／發佈執行緒分離以降低 Race Condition 風險  
+
+目標讀者包含對 **嵌入式系統**、**韌體／BIOS 介面** 與 **系統軟體** 有興趣的工程師與面試官。
+
+---
+
+## 🏗 系統架構 (System View)
+
+### 分層設計 (Layered Architecture)
+
+| 層級 | 角色 | 技術 | 職責 |
+|------|------|------|------|
+| **Presentation** | Vue 前端 | SPA、REST API 呼叫 | 儀表板、圖表、開關燈／澆水／手動拍照 |
+| **Application** | Flask 後端 | REST、MQTT 客戶端、DB | API 提供、MQTT 訂閱／發佈、資料持久化、控制指令下達 |
+| **Message Broker** | Mosquitto | MQTT、TLS 8883 | 感測資料、影像、控制指令的集中轉發 |
+| **Edge - 感測** | sensor (Raspberry Pi) | RPi.GPIO、DHT11、MCP3008、MQTT | 感測器讀取、繼電器輸出、定時上報與指令回應 |
+| **Edge - 影像** | image_recognition (Raspberry Pi) | OpenCV、MQTT | 攝影機擷取、健康度計算、定時／手動上傳 |
+
+控制與資料流：**使用者 → 前端 → Flask → MQTT → 感測器 Pi (GPIO)**；**感測器 Pi / 影像 Pi → MQTT → Flask → DB / 前端**。邊緣裝置不直接暴露 HTTP，僅透過 **Protocol Integration (MQTT)** 與後端耦合。
+
+### 容器化部署 (website 模組)
+
+後端與週邊服務以 **Docker Compose** 編排，便於環境一致與擴展：
+
+| 服務 | 說明 | 埠 |
+|------|------|-----|
+| **vue** | 前端建置與開發 | 8082→8080, 8081→8086 |
+| **flask** | 後端 API + uWSGI | 5000, 5001 |
+| **nginx** | 反向代理、靜態與 SSL | 80, 443 |
+| **mysql** | 感測／健康度／繼電器狀態儲存 | 3306 |
+| **mosquitto** | MQTT Broker (TLS 8883) | 1883, 8883, 9001, 9002 |
+| **phpMyAdmin** | DB 管理 (可選) | 8080 |
+
+Raspberry Pi 端 (sensor、image_recognition) 在裝置上以 **原生 Python + systemd / init 腳本** 執行，透過網路連至同一 Mosquitto Broker，與容器化後端協同運作。
+
+---
+
+## 🔬 深度技術導覽 (Technical Deep Dive)
+
+以下三份文件為本專案在 **系統架構**、**硬體生命週期** 與 **關鍵程式行為** 上的核心說明，並對應 **BIOS／嵌入式系統** 常見的設計關注點。
+
+| 文件 | 對應概念 | 核心內容簡述 |
+|------|----------|----------------|
+| **[SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md)** | **Layered Architecture**、**Protocol Integration** | 系統全局架構、MQTT 主題與資料流向、Raspberry Pi GPIO 與感測器／執行器對應、Flask 與 MQTT 的整合方式 |
+| **[HARDWARE_LIFECYCLE.md](./HARDWARE_LIFECYCLE.md)** | **Initialization**、**Main Loop**、**Fail-Safe** | 硬體控制腳本的程式生命週期：GPIO 與 SPI 初始化順序、主迴圈週期（感測 5s／影像 10s）、收到網頁指令時的電位改寫與異常時強制關閉繼電器 |
+| **[CRITICAL_CODE_ANALYSIS.md](./CRITICAL_CODE_ANALYSIS.md)** | **Resource / Concurrency**、**Exception Handling** | GPIO 高低電位實作、感測器讀取防呆（None / 0 檢查、HandleAbnormal）、訂閱／發佈雙執行緒設計（loop_forever vs loop_start）以降低 **Race Condition** 風險、OpenCV 與感測器讀取的異步執行方式 |
+
+### 技術要點條列
+
+- **Initialization**：BCM 腳位、OUT 模式、`initial=GPIO.HIGH` 安全預設；SPI (MCP3008) 與 DHT11 讀取時機。
+- **Protocol Integration**：MQTT 主題定義（如 `env/plant/detection/data`、`switch/light`、`operation/command`）作為控制與資料契約；TLS 8883 連線。
+- **Exception Handling**：感測器回傳 `None` 或 0 時不推送、觸發 HandleAbnormal 關閉燈／馬達並寫 log；on_message 與主迴圈外層 try/except 避免單點錯誤導致程序崩潰。
+- **Concurrency**：訂閱端 `Connect(False)` → `loop_forever()`（單一執行緒專職收訊）；發佈端 `Connect(True)` → `loop_start()` + 主迴圈（感測或影像），兩者分離以減少共用狀態競爭。
+
+詳細程式碼位置與流程請直接參閱上述三份文件。
+
+---
+
+## 📁 專案結構與程式碼位置
+
+| 模組 | 路徑 | 說明 |
+|------|------|------|
+| **website** | `website/` | 前端 (Vue)、後端 (Flask)、MQTT 客戶端、Docker 與 Nginx 設定 |
+| **sensor** | `sensor/` | 感測器與 GPIO 控制腳本 (`mqtt_for_sensor.py`)、MQTT 基底、設定與 init 服務腳本 |
+| **image_recognition** | `image_recognition/` | 影像擷取與健康度腳本 (`mqtt_for_image.py`)、MQTT 基底、設定與服務指令說明 |
+
+若需對照實作，可依序查閱：**sensor**（GPIO、感測器、例外處理）→ **image_recognition**（攝影機、雙執行緒）→ **website**（API、MQTT 訂閱／發佈、DB）。
+
+---
+
+## 🔧 硬體清單
+
+### 感測器 (Sensors)
+
+| 元件 | 介面 | 腳位／通道 | 用途 |
+|------|------|------------|------|
+| **DHT11** | 數位 (單線) | GPIO 4 (BCM) | 環境溫度、濕度 |
+| **MCP3008** | SPI | SPI 0, CH0 / CH1 / CH2 | CH0：環境亮度；CH1：土壤濕度；CH2：水位深度 |
+
+### 執行器 (Actuators)
+
+| 元件 | 介面 | 腳位 | 電位語意 |
+|------|------|------|----------|
+| **燈光繼電器** | GPIO 輸出 | BCM 18 | HIGH：關燈；LOW：開燈 |
+| **澆水馬達繼電器** | GPIO 輸出 | BCM 17 | HIGH：關閉；LOW：開啟（可搭配 5 秒時序） |
+
+### 影像與運算
+
+| 元件 | 說明 |
+|------|------|
+| **USB / CSI 攝影機** | OpenCV `VideoCapture(0)` 擷取，用於監控與植物健康度（綠/棕比例）分析 |
+
+上述腳位與介面在 **SYSTEM_ARCHITECTURE.md**、**HARDWARE_LIFECYCLE.md** 與 **CRITICAL_CODE_ANALYSIS.md** 中有更細的對應與程式碼引用。
+
+---
+
+## 📄 文件索引
+
+| 文件 | 用途 |
+|------|------|
+| **README.md**（本檔） | 專案總覽、系統觀點、技術導覽與硬體清單 |
+| **[SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md)** | 系統全局架構、通訊協定與 MQTT 主題 |
+| **[HARDWARE_LIFECYCLE.md](./HARDWARE_LIFECYCLE.md)** | 硬體控制腳本生命週期（初始化、主迴圈、指令觸發） |
+| **[CRITICAL_CODE_ANALYSIS.md](./CRITICAL_CODE_ANALYSIS.md)** | GPIO 控制、例外處理、異步／並行實作 |
+| **[MODULE_OVERVIEW.md](./MODULE_OVERVIEW.md)** | website / image_recognition / sensor 功能彙整 |
+
+---
+
+## ⚙ 技術棧摘要
+
+| 類別 | 技術 |
+|------|------|
+| **Edge (Pi)** | Python 3、RPi.GPIO、Adafruit_DHT、Adafruit_MCP3008、OpenCV、paho-mqtt |
+| **Backend** | Flask、paho-mqtt、MySQL、uWSGI |
+| **Frontend** | Vue.js、SPA |
+| **Infrastructure** | Docker Compose、Nginx、Mosquitto (MQTT)、MySQL 5.7 |
+
+---
+
+*本專案強調可讀的架構分層、明確的硬體介面語意與穩健的異常處理，適合作為軟硬體整合與系統設計的參考實例。*
