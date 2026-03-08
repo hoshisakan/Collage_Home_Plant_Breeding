@@ -1,6 +1,6 @@
 # 家庭植栽監控系統 — 技術總結報告
 
-> 本文件依據專案內 **FAILSAFE_AND_LOGIC.md**、**SYSTEM_ARCHITECTURE.md**、**FLASK_AND_THREADING.md** 及相關 .md 與原始碼彙整，供面試時對照解說。條列式、精簡撰寫。
+> 本文件依據專案內 **FAILSAFE_AND_LOGIC.md**、**SYSTEM_ARCHITECTURE.md**、**FLASK_AND_THREADING.md** 及相關 .md 與原始碼彙整。
 
 ---
 
