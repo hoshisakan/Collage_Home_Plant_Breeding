@@ -84,13 +84,3 @@
 - 安全預設：GPIO **initial=GPIO.HIGH**；離開時 **ForceStop** 強制關燈、關馬達。
 
 ---
-
-## 四、對系統穩定度之貢獻
-
-- **複雜邏輯轉化為 Technical Spec（技術規範）**：專案內 **SYSTEM_ARCHITECTURE.md**、**FAILSAFE_AND_LOGIC.md**、**FLASK_AND_THREADING.md**、**HARDWARE_SPEC_AND_THRESHOLDS.md**、**HARDWARE_CODE_REFERENCE.md**、**HARDWARE_LIFECYCLE.md**、**CODE_FUNCTION_MAPPING.md** 等文件，將架構、故障安全、門檻、GPIO/SPI 生命週期與程式對照表格化、條列化，並標註檔案與行號，使複雜邏輯可被覆核、擴充與交接，符合工業開發對技術規範之要求。
-- **開發初期即納入電源管理與異常保護**：  
-  - **電源／上電**：GPIO 初始化即設 **initial=GPIO.HIGH**，上電後繼電器不導通，避免未預期負載。  
-  - **異常保護**：感測器讀取失敗或為 0 時立即關閉對應繼電器（**HandleAbnormal**）、不推送無效資料；程式結束前 **ForceStop** 強制關閉燈與馬達；後端以閾值過濾異常值，僅在自動模式下達 **operation/command**。  
-  此種「預設安全、異常時收斂至安全狀態、無效資料不驅動決策」之思維，與韌體開發中電源管理、Watchdog、Safe State 之核心邏輯一致，有利於在面試中展現對系統穩定度與可維運性之重視。
-
----

@@ -129,7 +129,7 @@ Raspberry Pi 端 (sensor、image_recognition) 以 **原生 Python + systemd / in
 
 | 文件 | 對應概念 | 內容簡述 |
 |------|----------|----------|
-| **[TECHNICAL_SUMMARY.md](./TECHNICAL_SUMMARY.md)** | 技術總結 | 核心架構、Failsafe（Data Integrity、Heartbeat、Mutual Exclusion）、穩定度貢獻之完整條列與面試對照 |
+| **[TECHNICAL_SUMMARY.md](./TECHNICAL_SUMMARY.md)** | 技術總結 | 核心架構、Failsafe（Data Integrity、Heartbeat、Mutual Exclusion）|
 | **[SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md)** | 架構、協定 | MQTT 主題與資料流向、GPIO 與感測器／執行器對應 |
 | **[FAILSAFE_AND_LOGIC.md](./FAILSAFE_AND_LOGIC.md)** | Failsafe、邏輯 | 感測異常時關閉馬達／燈具、單一錯誤不崩潰設計 |
 | **[FLASK_AND_THREADING.md](./FLASK_AND_THREADING.md)** | API、多執行緒 | REST 與 MQTT 分離、雙執行緒分離影像運算與硬體監控 |
