@@ -12,8 +12,8 @@ def change_light():
     if request.method == 'POST':
         mode = request.get_json()['mode']
         response = {
-            'manually_light_status': False,
-            'manually_motor_status': mode,
+            'manually_light_status': mode,
+            'manually_motor_status': False,
             'auto_control_status': False
         }
         command = {'light_status': mode}
@@ -27,8 +27,8 @@ def change_watering():
     if request.method == 'POST':
         mode = request.get_json()['mode']
         response = {
-            'manually_light_status': mode,
-            'manually_motor_status': False,
+            'manually_light_status': False,
+            'manually_motor_status': mode,
             'auto_control_status': False
         }
         command = {'watering_status': mode}
